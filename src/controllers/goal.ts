@@ -46,7 +46,8 @@ export const GetGoals = async (
   const customizedReq = req as CustomRequest;
   const r = <UserSchemaType>customizedReq.token;
   try {
-    const goals = await Goal.find({ user: r.id });
+    const goals = await Goal.find({ user: r.id }).populate("user"); // deep populate of the reference(r\nal) documents.
+    console.log("GOAL: : ", goals);
     return res.status(200).json(<GoalSchemaType[]>goals);
   } catch (error) {
     return res.status(500).send(<ResponseType>{
