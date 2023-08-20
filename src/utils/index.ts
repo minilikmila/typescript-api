@@ -50,12 +50,12 @@ const extractToken = (token: string): string | null => {
   return null;
 };
 
-const randomPhoneCodeGenerator = (): string => {
-  const uuid = "xxxxxx".replace(/x/g, () =>
-    Math.floor(Math.random() * 10).toString(16)
-  );
-  return uuid.substring(0, 6);
-};
+// const randomPhoneCodeGenerator = (): string => {
+//   const uuid = "xxxxxx".replace(/x/g, () =>
+//     Math.floor(Math.random() * 10).toString(16)
+//   );
+//   return uuid.substring(0, 6);
+// };
 
 const generateOTP = (len: number): string => {
   const digits = "0123456789";

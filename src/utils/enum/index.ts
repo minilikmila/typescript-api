@@ -6,4 +6,5 @@ export enum RoleType {
 export enum OtpTypes {
   FORGET = "forget",
   VERIFICATION = "verification",
+  AUTHENTICATION = "authentication",
 }
