@@ -46,7 +46,8 @@ const GetGoals = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const customizedReq = req;
     const r = customizedReq.token;
     try {
-        const goals = yield goal_1.default.find({ user: r.id });
+        const goals = yield goal_1.default.find({ user: r.id }).populate("user"); // deep populate of the reference(r\nal) documents.
+        console.log("GOAL: : ", goals);
         return res.status(200).json(goals);
     }
     catch (error) {

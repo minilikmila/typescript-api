@@ -1,13 +1,12 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Verify = void 0;
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const auth_1 = require("../controllers/auth");
+const index_1 = require("../utils/index");
 const Verify = (req, res, next) => {
+    var _a;
     let token = req.header("Authorization");
+    console.log("Original URL : ", req.originalUrl);
+    // console.log(req?.originalUrl == "/api/user/me");
     //   console.log(token?.replace("Bearer", ""));
     if (!token) {
         return res.status(401).send({
@@ -16,19 +15,22 @@ const Verify = (req, res, next) => {
         });
     }
     try {
-        if (token.startsWith("Bearer")) {
-            // IF the token is bearer token...
-            token = token.split(" ")[1];
-        }
         // Verify
-        const decoded = jsonwebtoken_1.default.verify(token, auth_1.jwt_secret_key);
+        const decoded = (0, index_1.validateToken)(token);
         req.token = decoded; // built in request extends customRequest additional get decoded Jwt payload ()
         next();
     }
-    catch (error) {
+    catch (e) {
+        if (((_a = e === null || e === void 0 ? void 0 : e.opts) === null || _a === void 0 ? void 0 : _a.title) === "invalid_token") {
+            return res.status(401).send({
+                message: "Unauthorized.",
+                error: e,
+                success: false,
+            });
+        }
         return res.status(500).send({
             message: "Something went wrong.",
-            error: error,
+            error: e,
             success: false,
         });
     }
