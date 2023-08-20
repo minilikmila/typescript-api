@@ -394,3 +394,105 @@ export const resetPassword = async (
     });
   }
 };
+
+export const otpLogin = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { phone_number, code } = req.body;
+  try {
+    if (!phone_number || !code) {
+      throw new HttpError({
+        title: "required_field_missed",
+        code: 400,
+        detail:
+          "Phone number, confirmation code, and your new password is required fields.",
+      });
+    }
+
+    const user = await User.findOne({ phone_number });
+    if (!user) {
+      throw new HttpError({
+        title: "account_not_found",
+        code: 404,
+        detail: "Account not found with this number.",
+      });
+    }
+
+    const validOtp = await verifyOTP(user.id, code, OtpTypes.AUTHENTICATION);
+    await removeOtp(validOtp);
+
+    const accessToken = await tokenBuilder(user);
+
+    return res.status(200).json(<UserSchemaType>{
+      _id: user.id,
+      name: user.name,
+      email: user.email,
+      phone_number,
+      token: accessToken,
+    });
+  } catch (error) {
+    let err_code = error?.opts?.code || 500;
+    return res.status(err_code).json(<ResponseType>{
+      message: error?.opts?.title || "Something went wrong.",
+      success: false,
+      error: error,
+    });
+  }
+};
+
+export const otpAuthenticationRequest = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { phone_number } = req.body;
+  try {
+    if (!phone_number) {
+      throw new HttpError({
+        title: "required_field_missed",
+        code: 400,
+        detail:
+          "Phone number, confirmation code, and your new password is required fields.",
+      });
+    }
+    const user = await User.findOne({ phone_number });
+    if (!user) {
+      throw new HttpError({
+        title: "account_not_found",
+        code: 404,
+        detail: "Account not found with this number.",
+      });
+    }
+
+    const to = `${user.country_code}${user.phone_number}`;
+    const code = generateOTP(6);
+
+    let otpExpiration: any = new Date();
+    otpExpiration = otpExpiration.setMinutes(otpExpiration.getMinutes() + 10);
+
+    await setOtp(<IOtp>{
+      userId: user.id,
+      otp: code,
+      type: OtpTypes.AUTHENTICATION,
+      otp_expired_at: new Date(otpExpiration),
+    });
+
+    await sendPhoneSMS(<SMSMessage>{
+      body: `${code} - Is your Authentication OTP code and it's valid for only 10 minutes, you can authenticate using it within 10 minutes and only once.`,
+      to,
+    });
+
+    return res.status(200).json(<ResponseType>{
+      message:
+        "Your authentication OTP code is sent via your phone, Please check your phone. It's valid for 10 minutes only.",
+      success: true,
+    });
+  } catch (error) {
+    let err_code = error?.opts?.code || 500;
+    return res.status(err_code).json(<ResponseType>{
+      message: error?.opts?.title || "Something went wrong.",
+      success: false,
+      error: error,
+    });
+  }
+};
