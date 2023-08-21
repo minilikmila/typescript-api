@@ -17,6 +17,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const config_1 = require("../config");
 const httpError_1 = __importDefault(require("./httpError"));
 const otp_1 = __importDefault(require("../model/otp"));
+const logging_1 = __importDefault(require("../library/logging"));
 const validateToken = (token) => {
     try {
         const decoded = jsonwebtoken_1.default.verify(token, config_1.jwt_secret_key);
@@ -106,6 +107,7 @@ const setOtp = ({ userId, otp, type, otp_expired_at, }) => __awaiter(void 0, voi
         return opt_value._id;
     }
     catch (error) {
+        logging_1.default.info(`Error encountered in setOtp method: ${error}`);
         throw new httpError_1.default({
             title: "otp_creation_error",
             code: 400,

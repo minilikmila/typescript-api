@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OtpTypes = exports.RoleType = void 0;
+exports.TokenType = exports.OtpTypes = exports.RoleType = void 0;
 var RoleType;
 (function (RoleType) {
     RoleType["USER"] = "user";
@@ -12,3 +12,8 @@ var OtpTypes;
     OtpTypes["VERIFICATION"] = "verification";
     OtpTypes["AUTHENTICATION"] = "authentication";
 })(OtpTypes || (exports.OtpTypes = OtpTypes = {}));
+var TokenType;
+(function (TokenType) {
+    TokenType["EMAIL_VERIFICATION"] = "email_verification";
+    TokenType["ACCESS"] = "access";
+})(TokenType || (exports.TokenType = TokenType = {}));

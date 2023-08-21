@@ -13,5 +13,9 @@ router
     .post("/confirm_phone", check_p_code_1.validatePConfirmation, auth_1.confirmPhoneNumber)
     .get("/resend_phone_code", check_p_code_1.validatePConfirmation, auth_1.resendPhoneConfirmationCode)
     .post("/forgot_password", auth_1.phoneForgotPassword)
-    .post("/reset_password", auth_1.resetPassword);
+    .post("/reset_password", auth_1.resetPassword)
+    .post("/request_otp_authentication_code", auth_1.otpAuthenticationRequest)
+    .post("/otp_authentication", auth_1.otpAuthentication)
+    .post("/confirm_email", auth_1.confirmEmail);
+//   refresh token
 exports.default = router;

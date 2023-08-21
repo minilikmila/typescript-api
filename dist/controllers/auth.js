@@ -12,15 +12,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.otpAuthenticationRequest = exports.otpLogin = exports.resetPassword = exports.phoneForgotPassword = exports.resendPhoneConfirmationCode = exports.confirmPhoneNumber = exports.login = exports.register = void 0;
+exports.otpAuthenticationRequest = exports.otpAuthentication = exports.resetPassword = exports.phoneForgotPassword = exports.resendPhoneConfirmationCode = exports.confirmPhoneNumber = exports.confirmEmail = exports.login = exports.register = void 0;
 const user_1 = __importDefault(require("../model/user"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const phone_sms_sender_1 = require("../services/phone_sms_sender");
 const index_1 = require("../utils/index");
 const enum_1 = require("../utils/enum");
 const httpError_1 = __importDefault(require("../utils/httpError"));
+const verifyEmailTemplate_1 = __importDefault(require("../templates/verifyEmailTemplate"));
+const mail_service_1 = __importDefault(require("../services/mail_service"));
+const logging_1 = __importDefault(require("../library/logging"));
 const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     const body = req.body;
     try {
         if (!body.email ||
@@ -44,9 +47,6 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         }
         const salt = yield bcrypt_1.default.genSalt(12);
         const hashedPassword = yield bcrypt_1.default.hash(body.password, salt);
-        const p_code = (0, index_1.generateOTP)(6);
-        let otpExpiration = new Date();
-        otpExpiration = otpExpiration.setMinutes(otpExpiration.getMinutes() + 10);
         // we can also use as const: Promise<UserSchemaType> = User.create({name, email, password})
         const user = yield user_1.default.create({
             name: body.name,
@@ -56,52 +56,67 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             phone_number: body.phone_number,
             country_code: body.country_code,
         });
-        yield (0, index_1.setOtp)({
-            userId: user.id,
-            otp: p_code,
-            type: enum_1.OtpTypes.VERIFICATION,
-            otp_expired_at: new Date(otpExpiration),
+        if (!user) {
+            throw new httpError_1.default({
+                title: "error_on_account_signup",
+                code: 500,
+                detail: "Error encountered when signup.",
+            });
+        }
+        user.token_type = enum_1.TokenType.EMAIL_VERIFICATION;
+        const confirmationToken = yield tokenBuilder(user);
+        const emailTemplate = (0, verifyEmailTemplate_1.default)(confirmationToken);
+        const mailService = new mail_service_1.default();
+        logging_1.default.info(`Transporter status: ${yield mailService.verifyConnection()}`);
+        yield mailService.sendEmail({
+            to: body.email,
+            subject: "Verification",
+            html: emailTemplate.html,
         });
-        if (user) {
-            // send confirmation SMS
-            const to = `${user.country_code}${user.phone_number}`;
-            (0, phone_sms_sender_1.sendPhoneSMS)({
-                body: `${p_code} - Is your confirmation code and valid for only 10 minutes, please confirm to activate your account.`,
-                to,
-                // from: TWILIO_WHATSAPP_NUMBER,
-            });
-            return res.status(201).json({
-                _id: user.id,
-                name: user.name,
-                email: user.email,
-                // token: generateToken(user),
-            });
-        }
-        else {
-            return res.status(500).send({
-                message: "Something went wrong.",
-                success: false,
-            });
-        }
+        return res.status(200).json({
+            message: "Signed up successfully. Confirmation sent via your email, Please confirm your account.",
+            success: true,
+        });
+        // await setOtp(<IOtp>{
+        //   userId: user.id,
+        //   otp: p_code,
+        //   type: OtpTypes.VERIFICATION,
+        //   otp_expired_at: new Date(otpExpiration),
+        // });
+        // if (user) {
+        //   // send confirmation SMS
+        //   const to = `${user.country_code}${user.phone_number}`;
+        //   sendPhoneSMS(<SMSMessage>{
+        //     body: `${p_code} - Is your confirmation code and valid for only 10 minutes, please confirm to activate your account.`,
+        //     to,
+        //     // from: TWILIO_WHATSAPP_NUMBER,
+        //   });
+        //   return res.status(201).json(<Object>{
+        //     _id: user.id,
+        //     name: user.name,
+        //     email: user.email,
+        //     // token: generateToken(user),
+        //   });
+        // } else {
+        //   return res.status(500).send(<ResponseType>{
+        //     message: "Something went wrong.",
+        //     success: false,
+        //   });
+        // }
     }
     catch (error) {
-        if (((_a = error === null || error === void 0 ? void 0 : error.opts) === null || _a === void 0 ? void 0 : _a.title) === "otp_creation_error") {
-            return res.status(401).send({
-                message: "otp_creation_error.",
-                error: error,
-                success: false,
-            });
-        }
-        console.log("Outside");
-        return res.status(500).send({
-            message: "Something went wrong.",
+        logging_1.default.error(`Error: ${req.originalUrl}: encountered error - ${error}`);
+        let err_code = ((_a = error === null || error === void 0 ? void 0 : error.opts) === null || _a === void 0 ? void 0 : _a.code) || 500;
+        return res.status(err_code).send({
+            message: ((_b = error === null || error === void 0 ? void 0 : error.opts) === null || _b === void 0 ? void 0 : _b.title) || "Something went wrong.",
+            error: error,
             success: false,
         });
     }
 });
 exports.register = register;
 const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b, _c;
+    var _c, _d;
     const body = req.body;
     try {
         if (!body.phone_number || !body.password) {
@@ -115,7 +130,8 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const foundUser = yield user_1.default.findOne({
             phone_number: body.phone_number,
         });
-        if (foundUser && !foundUser.is_phone_confirmed) {
+        if ((foundUser && !foundUser.is_phone_confirmed) ||
+            !(foundUser === null || foundUser === void 0 ? void 0 : foundUser.is_email_confirmed)) {
             throw new httpError_1.default({
                 title: "inactive_account",
                 detail: "Please confirm your account. check your mobile sms message or email.",
@@ -147,9 +163,9 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         });
     }
     catch (error) {
-        let err_code = ((_b = error === null || error === void 0 ? void 0 : error.opts) === null || _b === void 0 ? void 0 : _b.code) || 500;
+        let err_code = ((_c = error === null || error === void 0 ? void 0 : error.opts) === null || _c === void 0 ? void 0 : _c.code) || 500;
         return res.status(err_code).json({
-            message: ((_c = error === null || error === void 0 ? void 0 : error.opts) === null || _c === void 0 ? void 0 : _c.title) || "Something went wrong",
+            message: ((_d = error === null || error === void 0 ? void 0 : error.opts) === null || _d === void 0 ? void 0 : _d.title) || "Something went wrong",
             success: false,
             error: error,
         });
@@ -157,31 +173,91 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.login = login;
 const tokenBuilder = (user) => __awaiter(void 0, void 0, void 0, function* () {
-    const token = (0, index_1.generateJWTToken)({ id: user.id, email: user.email, token: "access" }, {
-        issuer: user.phone_number,
+    const token = (0, index_1.generateJWTToken)({
+        id: user.id,
+        email: user.email,
+        token: user.token_type || enum_1.TokenType.ACCESS,
+    }, {
+        issuer: user.token_type === enum_1.TokenType.EMAIL_VERIFICATION
+            ? user.email
+            : user.phone_number,
         subject: user.id,
         audience: "root",
     });
     return token;
 });
-// const generateToken = (payload: UserSchemaType): string | JwtPayload => {
-//   let token: string | JsonWebKey;
-//   token = jwt.sign(
-//     <UserSchemaType>{
-//       id: payload.id,
-//       name: payload.name,
-//       email: payload.email,
-//     },
-//     jwt_secret_key,
-//     {
-//       expiresIn: "30m",
-//     }
-//   );
-//   return token;
-// };
+// email confirmation or verification
+const confirmEmail = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _e, _f;
+    const { token, email } = req.body;
+    try {
+        if (!email || !token) {
+            throw new httpError_1.default({
+                title: "required_field_missed",
+                code: 400,
+                detail: "Phone number and verification token is required fields.",
+            });
+        }
+        const user = yield user_1.default.findOne({ email });
+        if (!user) {
+            throw new httpError_1.default({
+                title: "account_not_found",
+                detail: "Account not found with this email",
+                code: 404,
+            });
+        }
+        if (user.is_email_confirmed) {
+            throw new httpError_1.default({
+                title: "already_confirmed",
+                detail: "The account is already confirmed.",
+                code: 404,
+            });
+        }
+        const decoded = yield (0, index_1.validateToken)(token);
+        if (decoded.email != user.email) {
+            throw new httpError_1.default({
+                title: "invalid_request",
+                code: 400,
+                detail: "User metadata mismatch.",
+            });
+        }
+        user.is_email_confirmed = true;
+        user.email_confirmed_at = new Date();
+        yield user.save();
+        let otpExpiration = new Date();
+        otpExpiration = otpExpiration.setMinutes(otpExpiration.getMinutes() + 10);
+        const p_code = (0, index_1.generateOTP)(6);
+        const to = `${user.country_code}${user.phone_number}`;
+        yield (0, index_1.setOtp)({
+            userId: user.id,
+            otp: p_code,
+            type: enum_1.OtpTypes.VERIFICATION,
+            otp_expired_at: new Date(otpExpiration),
+        });
+        // send confirmation SMS
+        (0, phone_sms_sender_1.sendPhoneSMS)({
+            body: `${p_code} - Is your verification code and valid for only 10 minutes, please confirm to activate your account. and then you can login to your account.`,
+            to,
+            // from: TWILIO_WHATSAPP_NUMBER,
+        });
+        return res.status(200).json({
+            message: "Your email is confirmed. Now we sent OTP code to your mobile number, Please confirm your phone. and then you have authenticated access to your account.",
+        });
+    }
+    catch (error) {
+        logging_1.default.error(`Error: ${req.originalUrl}: encountered error - ${error}`);
+        let err_code = ((_e = error === null || error === void 0 ? void 0 : error.opts) === null || _e === void 0 ? void 0 : _e.code) || 500;
+        return res.status(err_code).send({
+            message: ((_f = error === null || error === void 0 ? void 0 : error.opts) === null || _f === void 0 ? void 0 : _f.title) || "Something went wrong.",
+            error: error,
+            success: false,
+        });
+    }
+});
+exports.confirmEmail = confirmEmail;
 // Phone confirmation....
 const confirmPhoneNumber = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d, _e;
+    var _g, _h;
     try {
         const { code, phone_number } = req.body;
         const user = yield user_1.default.findOne({ phone_number });
@@ -205,9 +281,9 @@ const confirmPhoneNumber = (req, res) => __awaiter(void 0, void 0, void 0, funct
         });
     }
     catch (error) {
-        let err_code = ((_d = error === null || error === void 0 ? void 0 : error.opts) === null || _d === void 0 ? void 0 : _d.code) || 500;
+        let err_code = ((_g = error === null || error === void 0 ? void 0 : error.opts) === null || _g === void 0 ? void 0 : _g.code) || 500;
         return res.status(err_code).json({
-            message: ((_e = error === null || error === void 0 ? void 0 : error.opts) === null || _e === void 0 ? void 0 : _e.title) || "Something went wrong.",
+            message: ((_h = error === null || error === void 0 ? void 0 : error.opts) === null || _h === void 0 ? void 0 : _h.title) || "Something went wrong.",
             success: false,
             error: error,
         });
@@ -216,7 +292,7 @@ const confirmPhoneNumber = (req, res) => __awaiter(void 0, void 0, void 0, funct
 exports.confirmPhoneNumber = confirmPhoneNumber;
 // Resend phone confirmation code ...
 const resendPhoneConfirmationCode = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f, _g;
+    var _j, _k;
     const { phone_number } = req.body;
     try {
         const user = yield user_1.default.findOne({ phone_number });
@@ -257,9 +333,9 @@ const resendPhoneConfirmationCode = (req, res) => __awaiter(void 0, void 0, void
         });
     }
     catch (error) {
-        let err_code = ((_f = error === null || error === void 0 ? void 0 : error.opts) === null || _f === void 0 ? void 0 : _f.code) || 500;
+        let err_code = ((_j = error === null || error === void 0 ? void 0 : error.opts) === null || _j === void 0 ? void 0 : _j.code) || 500;
         return res.status(err_code).json({
-            message: ((_g = error === null || error === void 0 ? void 0 : error.opts) === null || _g === void 0 ? void 0 : _g.title) || "Something went wrong.",
+            message: ((_k = error === null || error === void 0 ? void 0 : error.opts) === null || _k === void 0 ? void 0 : _k.title) || "Something went wrong.",
             success: false,
             error: error,
         });
@@ -268,7 +344,7 @@ const resendPhoneConfirmationCode = (req, res) => __awaiter(void 0, void 0, void
 exports.resendPhoneConfirmationCode = resendPhoneConfirmationCode;
 // forgot password
 const phoneForgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _h, _j;
+    var _l, _m;
     try {
         const { phone_number } = req.body;
         if (!phone_number) {
@@ -313,9 +389,9 @@ const phoneForgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, func
         });
     }
     catch (error) {
-        let err_code = ((_h = error === null || error === void 0 ? void 0 : error.opts) === null || _h === void 0 ? void 0 : _h.code) || 500;
+        let err_code = ((_l = error === null || error === void 0 ? void 0 : error.opts) === null || _l === void 0 ? void 0 : _l.code) || 500;
         return res.status(err_code).json({
-            message: ((_j = error === null || error === void 0 ? void 0 : error.opts) === null || _j === void 0 ? void 0 : _j.title) || "Something went wrong.",
+            message: ((_m = error === null || error === void 0 ? void 0 : error.opts) === null || _m === void 0 ? void 0 : _m.title) || "Something went wrong.",
             success: false,
             error: error,
         });
@@ -323,7 +399,7 @@ const phoneForgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, func
 });
 exports.phoneForgotPassword = phoneForgotPassword;
 const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _k, _l;
+    var _o, _p;
     const { phone_number, code, password } = req.body;
     try {
         if (!phone_number || !code || !password) {
@@ -352,24 +428,24 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         });
     }
     catch (error) {
-        let err_code = ((_k = error === null || error === void 0 ? void 0 : error.opts) === null || _k === void 0 ? void 0 : _k.code) || 500;
+        let err_code = ((_o = error === null || error === void 0 ? void 0 : error.opts) === null || _o === void 0 ? void 0 : _o.code) || 500;
         return res.status(err_code).json({
-            message: ((_l = error === null || error === void 0 ? void 0 : error.opts) === null || _l === void 0 ? void 0 : _l.title) || "Something went wrong.",
+            message: ((_p = error === null || error === void 0 ? void 0 : error.opts) === null || _p === void 0 ? void 0 : _p.title) || "Something went wrong.",
             success: false,
             error: error,
         });
     }
 });
 exports.resetPassword = resetPassword;
-const otpLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _m, _o;
+const otpAuthentication = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _q, _r;
     const { phone_number, code } = req.body;
     try {
         if (!phone_number || !code) {
             throw new httpError_1.default({
                 title: "required_field_missed",
                 code: 400,
-                detail: "Phone number, confirmation code, and your new password is required fields.",
+                detail: "Your phone number, and authentication code is required fields.",
             });
         }
         const user = yield user_1.default.findOne({ phone_number });
@@ -392,24 +468,24 @@ const otpLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         });
     }
     catch (error) {
-        let err_code = ((_m = error === null || error === void 0 ? void 0 : error.opts) === null || _m === void 0 ? void 0 : _m.code) || 500;
+        let err_code = ((_q = error === null || error === void 0 ? void 0 : error.opts) === null || _q === void 0 ? void 0 : _q.code) || 500;
         return res.status(err_code).json({
-            message: ((_o = error === null || error === void 0 ? void 0 : error.opts) === null || _o === void 0 ? void 0 : _o.title) || "Something went wrong.",
+            message: ((_r = error === null || error === void 0 ? void 0 : error.opts) === null || _r === void 0 ? void 0 : _r.title) || "Something went wrong.",
             success: false,
             error: error,
         });
     }
 });
-exports.otpLogin = otpLogin;
+exports.otpAuthentication = otpAuthentication;
 const otpAuthenticationRequest = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _p, _q;
+    var _s, _t;
     const { phone_number } = req.body;
     try {
         if (!phone_number) {
             throw new httpError_1.default({
                 title: "required_field_missed",
                 code: 400,
-                detail: "Phone number, confirmation code, and your new password is required fields.",
+                detail: "Phone number is required field.",
             });
         }
         const user = yield user_1.default.findOne({ phone_number });
@@ -440,9 +516,9 @@ const otpAuthenticationRequest = (req, res) => __awaiter(void 0, void 0, void 0,
         });
     }
     catch (error) {
-        let err_code = ((_p = error === null || error === void 0 ? void 0 : error.opts) === null || _p === void 0 ? void 0 : _p.code) || 500;
+        let err_code = ((_s = error === null || error === void 0 ? void 0 : error.opts) === null || _s === void 0 ? void 0 : _s.code) || 500;
         return res.status(err_code).json({
-            message: ((_q = error === null || error === void 0 ? void 0 : error.opts) === null || _q === void 0 ? void 0 : _q.title) || "Something went wrong.",
+            message: ((_t = error === null || error === void 0 ? void 0 : error.opts) === null || _t === void 0 ? void 0 : _t.title) || "Something went wrong.",
             success: false,
             error: error,
         });
