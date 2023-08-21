@@ -16,11 +16,15 @@ import {
   setOtp,
   removeOtp,
   generateJWTToken,
+  validateToken,
 } from "../utils/index";
 import Otp from "../model/otp";
 import { IOtp } from "../interfaces/otpInterface";
-import { OtpTypes } from "../utils/enum";
+import { OtpTypes, TokenType } from "../utils/enum";
 import HttpError from "../utils/httpError";
+import VerifyEmailTemplate from "../templates/verifyEmailTemplate";
+import Mailer, { sendEmail } from "../services/mail_service";
+import Logging from "../library/logging";
 
 export const register = async (req: Request, res: Response) => {
   const body: UserSchemaType = req.body;
@@ -51,9 +55,7 @@ export const register = async (req: Request, res: Response) => {
 
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(body.password, salt);
-    const p_code = generateOTP(6);
-    let otpExpiration: any = new Date();
-    otpExpiration = otpExpiration.setMinutes(otpExpiration.getMinutes() + 10);
+
     // we can also use as const: Promise<UserSchemaType> = User.create({name, email, password})
     const user: UserSchemaType = await User.create({
       name: body.name,
@@ -63,45 +65,67 @@ export const register = async (req: Request, res: Response) => {
       phone_number: body.phone_number,
       country_code: body.country_code,
     });
+    if (!user) {
+      throw new HttpError({
+        title: "error_on_account_signup",
+        code: 500,
+        detail: "Error encountered when signup.",
+      });
+    }
+    user.token_type = TokenType.EMAIL_VERIFICATION;
 
-    await setOtp(<IOtp>{
-      userId: user.id,
-      otp: p_code,
-      type: OtpTypes.VERIFICATION,
-      otp_expired_at: new Date(otpExpiration),
+    const confirmationToken: string = await tokenBuilder(user);
+
+    const emailTemplate = VerifyEmailTemplate(confirmationToken);
+
+    const mailService = new Mailer();
+    Logging.info(`Transporter status: ${await mailService.verifyConnection()}`);
+    await mailService.sendEmail({
+      to: body.email,
+      subject: "Verification",
+      html: emailTemplate.html,
     });
 
-    if (user) {
-      // send confirmation SMS
-      const to = `${user.country_code}${user.phone_number}`;
-      sendPhoneSMS(<SMSMessage>{
-        body: `${p_code} - Is your confirmation code and valid for only 10 minutes, please confirm to activate your account.`,
-        to,
-        // from: TWILIO_WHATSAPP_NUMBER,
-      });
-      return res.status(201).json(<Object>{
-        _id: user.id,
-        name: user.name,
-        email: user.email,
-        // token: generateToken(user),
-      });
-    } else {
-      return res.status(500).send(<ResponseType>{
-        message: "Something went wrong.",
-        success: false,
-      });
-    }
+    return res.status(200).json(<ResponseType>{
+      message:
+        "Signed up successfully. Confirmation sent via your email, Please confirm your account.",
+      success: true,
+    });
+
+    // await setOtp(<IOtp>{
+    //   userId: user.id,
+    //   otp: p_code,
+    //   type: OtpTypes.VERIFICATION,
+    //   otp_expired_at: new Date(otpExpiration),
+    // });
+
+    // if (user) {
+    //   // send confirmation SMS
+    //   const to = `${user.country_code}${user.phone_number}`;
+    //   sendPhoneSMS(<SMSMessage>{
+    //     body: `${p_code} - Is your confirmation code and valid for only 10 minutes, please confirm to activate your account.`,
+    //     to,
+    //     // from: TWILIO_WHATSAPP_NUMBER,
+    //   });
+    //   return res.status(201).json(<Object>{
+    //     _id: user.id,
+    //     name: user.name,
+    //     email: user.email,
+    //     // token: generateToken(user),
+    //   });
+    // } else {
+    //   return res.status(500).send(<ResponseType>{
+    //     message: "Something went wrong.",
+    //     success: false,
+    //   });
+    // }
   } catch (error: any) {
-    if (error?.opts?.title === "otp_creation_error") {
-      return res.status(401).send(<ResponseType>{
-        message: "otp_creation_error.",
-        error: error,
-        success: false,
-      });
-    }
-    console.log("Outside");
-    return res.status(500).send(<ResponseType>{
-      message: "Something went wrong.",
+    Logging.error(`Error: ${req.originalUrl}: encountered error - ${error}`);
+    let err_code = error?.opts?.code || 500;
+
+    return res.status(err_code).send(<ResponseType>{
+      message: error?.opts?.title || "Something went wrong.",
+      error: error,
       success: false,
     });
   }
@@ -122,7 +146,10 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
     const foundUser = await User.findOne<UserSchemaType>({
       phone_number: body.phone_number,
     });
-    if (foundUser && !foundUser.is_phone_confirmed) {
+    if (
+      (foundUser && !foundUser.is_phone_confirmed) ||
+      !foundUser?.is_email_confirmed
+    ) {
       throw new HttpError({
         title: "inactive_account",
         detail:
@@ -165,31 +192,100 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 };
 const tokenBuilder = async (user: UserSchemaType): Promise<string> => {
   const token = generateJWTToken(
-    <UserSchemaType>{ id: user.id, email: user.email, token: "access" },
+    <UserSchemaType>{
+      id: user.id,
+      email: user.email,
+      token: user.token_type || TokenType.ACCESS,
+    },
     <JwtPayload>{
-      issuer: user.phone_number,
+      issuer:
+        user.token_type === TokenType.EMAIL_VERIFICATION
+          ? user.email
+          : user.phone_number,
       subject: user.id,
       audience: "root",
     }
   );
   return token;
 };
+// email confirmation or verification
+export const confirmEmail = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { token, email } = req.body;
+  try {
+    if (!email || !token) {
+      throw new HttpError({
+        title: "required_field_missed",
+        code: 400,
+        detail: "Phone number and verification token is required fields.",
+      });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new HttpError({
+        title: "account_not_found",
+        detail: "Account not found with this email",
+        code: 404,
+      });
+    }
+    if (user.is_email_confirmed) {
+      throw new HttpError({
+        title: "already_confirmed",
+        detail: "The account is already confirmed.",
+        code: 404,
+      });
+    }
+    const decoded: JwtPayload = await validateToken(token);
 
-// const generateToken = (payload: UserSchemaType): string | JwtPayload => {
-//   let token: string | JsonWebKey;
-//   token = jwt.sign(
-//     <UserSchemaType>{
-//       id: payload.id,
-//       name: payload.name,
-//       email: payload.email,
-//     },
-//     jwt_secret_key,
-//     {
-//       expiresIn: "30m",
-//     }
-//   );
-//   return token;
-// };
+    if (decoded.email != user.email) {
+      throw new HttpError({
+        title: "invalid_request",
+        code: 400,
+        detail: "User metadata mismatch.",
+      });
+    }
+
+    user.is_email_confirmed = true;
+    user.email_confirmed_at = new Date();
+
+    await user.save();
+
+    let otpExpiration: any = new Date();
+    otpExpiration = otpExpiration.setMinutes(otpExpiration.getMinutes() + 10);
+    const p_code = generateOTP(6);
+    const to = `${user.country_code}${user.phone_number}`;
+
+    await setOtp(<IOtp>{
+      userId: user.id,
+      otp: p_code,
+      type: OtpTypes.VERIFICATION,
+      otp_expired_at: new Date(otpExpiration),
+    });
+
+    // send confirmation SMS
+    sendPhoneSMS(<SMSMessage>{
+      body: `${p_code} - Is your verification code and valid for only 10 minutes, please confirm to activate your account. and then you can login to your account.`,
+      to,
+      // from: TWILIO_WHATSAPP_NUMBER,
+    });
+
+    return res.status(200).json(<ResponseType>{
+      message:
+        "Your email is confirmed. Now we sent OTP code to your mobile number, Please confirm your phone. and then you have authenticated access to your account.",
+    });
+  } catch (error: any) {
+    Logging.error(`Error: ${req.originalUrl}: encountered error - ${error}`);
+    let err_code = error?.opts?.code || 500;
+
+    return res.status(err_code).send(<ResponseType>{
+      message: error?.opts?.title || "Something went wrong.",
+      error: error,
+      success: false,
+    });
+  }
+};
 // Phone confirmation....
 export const confirmPhoneNumber = async (
   req: Request,
@@ -395,7 +491,7 @@ export const resetPassword = async (
   }
 };
 
-export const otpLogin = async (
+export const otpAuthentication = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
@@ -406,7 +502,7 @@ export const otpLogin = async (
         title: "required_field_missed",
         code: 400,
         detail:
-          "Phone number, confirmation code, and your new password is required fields.",
+          "Your phone number, and authentication code is required fields.",
       });
     }
 
@@ -431,7 +527,7 @@ export const otpLogin = async (
       phone_number,
       token: accessToken,
     });
-  } catch (error) {
+  } catch (error: any) {
     let err_code = error?.opts?.code || 500;
     return res.status(err_code).json(<ResponseType>{
       message: error?.opts?.title || "Something went wrong.",
@@ -451,8 +547,7 @@ export const otpAuthenticationRequest = async (
       throw new HttpError({
         title: "required_field_missed",
         code: 400,
-        detail:
-          "Phone number, confirmation code, and your new password is required fields.",
+        detail: "Phone number is required field.",
       });
     }
     const user = await User.findOne({ phone_number });
@@ -487,7 +582,7 @@ export const otpAuthenticationRequest = async (
         "Your authentication OTP code is sent via your phone, Please check your phone. It's valid for 10 minutes only.",
       success: true,
     });
-  } catch (error) {
+  } catch (error: any) {
     let err_code = error?.opts?.code || 500;
     return res.status(err_code).json(<ResponseType>{
       message: error?.opts?.title || "Something went wrong.",

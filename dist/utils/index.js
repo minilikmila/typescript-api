@@ -56,10 +56,12 @@ const extractToken = (token) => {
     return null;
 };
 exports.extractToken = extractToken;
-const randomPhoneCodeGenerator = () => {
-    const uuid = "xxxxxx".replace(/x/g, () => Math.floor(Math.random() * 10).toString(16));
-    return uuid.substring(0, 6);
-};
+// const randomPhoneCodeGenerator = (): string => {
+//   const uuid = "xxxxxx".replace(/x/g, () =>
+//     Math.floor(Math.random() * 10).toString(16)
+//   );
+//   return uuid.substring(0, 6);
+// };
 const generateOTP = (len) => {
     const digits = "0123456789";
     let OTP = "";

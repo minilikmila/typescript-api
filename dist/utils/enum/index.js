@@ -10,4 +10,5 @@ var OtpTypes;
 (function (OtpTypes) {
     OtpTypes["FORGET"] = "forget";
     OtpTypes["VERIFICATION"] = "verification";
+    OtpTypes["AUTHENTICATION"] = "authentication";
 })(OtpTypes || (exports.OtpTypes = OtpTypes = {}));

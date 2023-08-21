@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetPassword = exports.phoneForgotPassword = exports.resendPhoneConfirmationCode = exports.confirmPhoneNumber = exports.login = exports.register = void 0;
+exports.otpAuthenticationRequest = exports.otpLogin = exports.resetPassword = exports.phoneForgotPassword = exports.resendPhoneConfirmationCode = exports.confirmPhoneNumber = exports.login = exports.register = void 0;
 const user_1 = __importDefault(require("../model/user"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const phone_sms_sender_1 = require("../services/phone_sms_sender");
@@ -361,3 +361,91 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.resetPassword = resetPassword;
+const otpLogin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _m, _o;
+    const { phone_number, code } = req.body;
+    try {
+        if (!phone_number || !code) {
+            throw new httpError_1.default({
+                title: "required_field_missed",
+                code: 400,
+                detail: "Phone number, confirmation code, and your new password is required fields.",
+            });
+        }
+        const user = yield user_1.default.findOne({ phone_number });
+        if (!user) {
+            throw new httpError_1.default({
+                title: "account_not_found",
+                code: 404,
+                detail: "Account not found with this number.",
+            });
+        }
+        const validOtp = yield (0, index_1.verifyOTP)(user.id, code, enum_1.OtpTypes.AUTHENTICATION);
+        yield (0, index_1.removeOtp)(validOtp);
+        const accessToken = yield tokenBuilder(user);
+        return res.status(200).json({
+            _id: user.id,
+            name: user.name,
+            email: user.email,
+            phone_number,
+            token: accessToken,
+        });
+    }
+    catch (error) {
+        let err_code = ((_m = error === null || error === void 0 ? void 0 : error.opts) === null || _m === void 0 ? void 0 : _m.code) || 500;
+        return res.status(err_code).json({
+            message: ((_o = error === null || error === void 0 ? void 0 : error.opts) === null || _o === void 0 ? void 0 : _o.title) || "Something went wrong.",
+            success: false,
+            error: error,
+        });
+    }
+});
+exports.otpLogin = otpLogin;
+const otpAuthenticationRequest = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _p, _q;
+    const { phone_number } = req.body;
+    try {
+        if (!phone_number) {
+            throw new httpError_1.default({
+                title: "required_field_missed",
+                code: 400,
+                detail: "Phone number, confirmation code, and your new password is required fields.",
+            });
+        }
+        const user = yield user_1.default.findOne({ phone_number });
+        if (!user) {
+            throw new httpError_1.default({
+                title: "account_not_found",
+                code: 404,
+                detail: "Account not found with this number.",
+            });
+        }
+        const to = `${user.country_code}${user.phone_number}`;
+        const code = (0, index_1.generateOTP)(6);
+        let otpExpiration = new Date();
+        otpExpiration = otpExpiration.setMinutes(otpExpiration.getMinutes() + 10);
+        yield (0, index_1.setOtp)({
+            userId: user.id,
+            otp: code,
+            type: enum_1.OtpTypes.AUTHENTICATION,
+            otp_expired_at: new Date(otpExpiration),
+        });
+        yield (0, phone_sms_sender_1.sendPhoneSMS)({
+            body: `${code} - Is your Authentication OTP code and it's valid for only 10 minutes, you can authenticate using it within 10 minutes and only once.`,
+            to,
+        });
+        return res.status(200).json({
+            message: "Your authentication OTP code is sent via your phone, Please check your phone. It's valid for 10 minutes only.",
+            success: true,
+        });
+    }
+    catch (error) {
+        let err_code = ((_p = error === null || error === void 0 ? void 0 : error.opts) === null || _p === void 0 ? void 0 : _p.code) || 500;
+        return res.status(err_code).json({
+            message: ((_q = error === null || error === void 0 ? void 0 : error.opts) === null || _q === void 0 ? void 0 : _q.title) || "Something went wrong.",
+            success: false,
+            error: error,
+        });
+    }
+});
+exports.otpAuthenticationRequest = otpAuthenticationRequest;
