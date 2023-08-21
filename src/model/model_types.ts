@@ -1,7 +1,7 @@
 import { Document, Types } from "mongoose";
 import { Request } from "express";
 import { JwtPayload } from "jsonwebtoken";
-import { IOType } from "child_process";
+import { TokenType } from "../utils/enum/index";
 
 export interface GoalSchemaType extends Document {
   user: Types.ObjectId;
@@ -22,6 +22,7 @@ export interface UserSchemaType extends Document {
   phone_confirmation_code?: string;
   token?: string;
   _id: Types.ObjectId; // type in interface definition
+  token_type: TokenType;
 }
 
 export type ResponseType = {
