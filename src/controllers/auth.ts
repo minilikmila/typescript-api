@@ -4,7 +4,7 @@ import {
   UserSchemaType,
   SMSMessage,
   BodyType,
-} from "../model/model_types";
+} from "../model/interface_types";
 import User from "../model/user";
 import bcrypt from "bcrypt";
 import jwt, { Secret, JwtPayload } from "jsonwebtoken";

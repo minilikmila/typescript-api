@@ -10,7 +10,7 @@ const sendPhoneSMS = (payload) => {
             .create({
             to: payload.to,
             from: (payload === null || payload === void 0 ? void 0 : payload.from) || config_1.TWILIO_PHONE_NUMBER,
-            body: payload.body, // create error by setting it payload.from
+            body: payload.body,
         })
             .then((res) => {
             console.log("SMS sent successfully: with a body : - ", res.body);
@@ -21,7 +21,6 @@ const sendPhoneSMS = (payload) => {
     }
     catch (error) {
         console.log("Error happened while initialize twilio client.", error);
-        // return error;
     }
 };
 exports.sendPhoneSMS = sendPhoneSMS;

@@ -10,7 +10,6 @@ const InitTwilioClient = () => {
     }
     catch (error) {
         console.log("Error happened while initialize twilio client.");
-        // return error;
     }
 };
 exports.InitTwilioClient = InitTwilioClient;

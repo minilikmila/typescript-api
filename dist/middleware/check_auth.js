@@ -6,8 +6,6 @@ const Verify = (req, res, next) => {
     var _a;
     let token = req.header("Authorization");
     console.log("Original URL : ", req.originalUrl);
-    // console.log(req?.originalUrl == "/api/user/me");
-    //   console.log(token?.replace("Bearer", ""));
     if (!token) {
         return res.status(401).send({
             message: "Unauthorized!",
@@ -15,9 +13,8 @@ const Verify = (req, res, next) => {
         });
     }
     try {
-        // Verify
         const decoded = (0, index_1.validateToken)(token);
-        req.token = decoded; // built in request extends customRequest additional get decoded Jwt payload ()
+        req.token = decoded;
         next();
     }
     catch (e) {

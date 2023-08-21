@@ -17,5 +17,4 @@ router
     .post("/request_otp_authentication_code", auth_1.otpAuthenticationRequest)
     .post("/otp_authentication", auth_1.otpAuthentication)
     .post("/confirm_email", auth_1.confirmEmail);
-//   refresh token
 exports.default = router;

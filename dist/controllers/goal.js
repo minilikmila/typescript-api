@@ -14,7 +14,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpdateGoal = exports.DeleteGoal = exports.GetGoals = exports.SetGoal = void 0;
 const goal_1 = __importDefault(require("../model/goal"));
-// import { CustomRequest } from "../middleware/check_auth";
 const SetGoal = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const body = req.body;
     if (!body.text) {
@@ -24,7 +23,6 @@ const SetGoal = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         });
     }
     try {
-        //   Need combined type including both userType and JwtPayload type
         const CustomizeReq = req;
         const r = CustomizeReq.token;
         const goal = yield goal_1.default.create({
@@ -46,7 +44,7 @@ const GetGoals = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const customizedReq = req;
     const r = customizedReq.token;
     try {
-        const goals = yield goal_1.default.find({ user: r.id }).populate("user"); // deep populate of the reference(r\nal) documents.
+        const goals = yield goal_1.default.find({ user: r.id }).populate("user");
         console.log("GOAL: : ", goals);
         return res.status(200).json(goals);
     }
@@ -72,7 +70,6 @@ const DeleteGoal = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 success: false,
             });
         }
-        //   check auth
         if (goal.user.toString() !== r.id) {
             return res.status(401).json({
                 message: "Unauthorized",
@@ -113,7 +110,6 @@ const UpdateGoal = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             });
         }
         if ((goal === null || goal === void 0 ? void 0 : goal.user) != r.id) {
-            // OR: Just use goal?.user.toString() and include type checking
             return res.status(401).json({
                 message: "You are not allowed to update this one.",
                 success: false,

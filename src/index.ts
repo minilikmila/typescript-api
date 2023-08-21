@@ -3,7 +3,7 @@ import "dotenv/config";
 import cors from "cors";
 // import { initDB } from "./db/init";
 import { connect } from "mongoose";
-import { ResponseType } from "./model/model_types";
+import { ResponseType } from "./model/interface_types";
 
 // Route handlers
 import auth_handler from "./routes/auth";

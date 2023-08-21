@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const index_1 = require("../utils/enum/index");
-// Schema define
 const otpSchema = new mongoose_1.Schema({
     userId: {
         type: String,

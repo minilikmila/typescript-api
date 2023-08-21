@@ -21,7 +21,6 @@ class Mailer {
         this.transporter = nodemailer_1.default.createTransport({
             host: process.env.SMTP_HOST,
             port: process.env.SMTP_PORT,
-            // secure: process.env.SMTP_TLS === "yes" ? true : false,
             auth: {
                 user: process.env.SMTP_USERNAME,
                 pass: process.env.SMTP_PASSWORD,
@@ -64,7 +63,6 @@ class Mailer {
     }
 }
 exports.default = Mailer;
-// Another options: use class and the fun__
 const sendEmail = (mailOption) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const mailObject = new Mailer();

@@ -15,14 +15,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 require("dotenv/config");
 const cors_1 = __importDefault(require("cors"));
-// import { initDB } from "./db/init";
 const mongoose_1 = require("mongoose");
-// Route handlers
 const auth_1 = __importDefault(require("./routes/auth"));
 const goal_1 = __importDefault(require("./routes/goal"));
 const user_1 = __importDefault(require("./routes/user"));
-// Install @types/package for TS and package itself for the JS
-// initDB();
 (function () {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -39,7 +35,6 @@ const app = (0, express_1.default)();
 app.use(express_1.default.json({ limit: "60MB" }));
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cors_1.default)({ origin: "*" }));
-//   General Routes
 app.use("/api/auth", auth_1.default);
 app.use("/api/goal", goal_1.default);
 app.use("/api/user", user_1.default);

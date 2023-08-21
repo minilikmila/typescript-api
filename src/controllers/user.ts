@@ -4,7 +4,7 @@ import {
   ResponseType,
   CustomRequest,
   UserSchemaType,
-} from "../model/model_types";
+} from "../model/interface_types";
 export const me = async (req: Request, res: Response) => {
   const customizedReq = req as CustomRequest;
 

@@ -5,7 +5,7 @@ import {
   GoalSchemaType,
   ResponseType,
   CustomRequest,
-} from "../model/model_types";
+} from "../model/interface_types";
 // import { CustomRequest } from "../middleware/check_auth";
 
 export const SetGoal = async (

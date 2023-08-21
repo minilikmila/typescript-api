@@ -1,6 +1,6 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { jwt_secret_key, JWT_PUBLIC_KEY, JWT_PRIVATE_KEY } from "../config";
-import { UserSchemaType } from "../model/model_types";
+import { UserSchemaType } from "../model/interface_types";
 import HttpError from "./httpError";
 import OtpM from "../model/otp";
 import { IOtp } from "../interfaces/otpInterface";

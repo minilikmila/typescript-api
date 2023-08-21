@@ -4,9 +4,9 @@ import {
   TWILIO_AUTH_TOKEN,
   TWILIO_PHONE_NUMBER,
 } from "../config";
-import { SMSMessage } from "../model/model_types";
+import { SMSMessage } from "../model/interface_types";
 
-export const sendPhoneSMS = (payload: SMSMessage): void => {
+export const sendPhoneSMS = (payload: SMSMessage) => {
   try {
     const client = new Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 

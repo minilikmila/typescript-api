@@ -47,12 +47,10 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         }
         const salt = yield bcrypt_1.default.genSalt(12);
         const hashedPassword = yield bcrypt_1.default.hash(body.password, salt);
-        // we can also use as const: Promise<UserSchemaType> = User.create({name, email, password})
         const user = yield user_1.default.create({
             name: body.name,
             email: body.email,
             password: hashedPassword,
-            // phone_confirmation_code: p_code,
             phone_number: body.phone_number,
             country_code: body.country_code,
         });
@@ -77,32 +75,6 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             message: "Signed up successfully. Confirmation sent via your email, Please confirm your account.",
             success: true,
         });
-        // await setOtp(<IOtp>{
-        //   userId: user.id,
-        //   otp: p_code,
-        //   type: OtpTypes.VERIFICATION,
-        //   otp_expired_at: new Date(otpExpiration),
-        // });
-        // if (user) {
-        //   // send confirmation SMS
-        //   const to = `${user.country_code}${user.phone_number}`;
-        //   sendPhoneSMS(<SMSMessage>{
-        //     body: `${p_code} - Is your confirmation code and valid for only 10 minutes, please confirm to activate your account.`,
-        //     to,
-        //     // from: TWILIO_WHATSAPP_NUMBER,
-        //   });
-        //   return res.status(201).json(<Object>{
-        //     _id: user.id,
-        //     name: user.name,
-        //     email: user.email,
-        //     // token: generateToken(user),
-        //   });
-        // } else {
-        //   return res.status(500).send(<ResponseType>{
-        //     message: "Something went wrong.",
-        //     success: false,
-        //   });
-        // }
     }
     catch (error) {
         logging_1.default.error(`Error: ${req.originalUrl}: encountered error - ${error}`);
@@ -126,7 +98,6 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 code: 400,
             });
         }
-        // request user data
         const foundUser = yield user_1.default.findOne({
             phone_number: body.phone_number,
         });
@@ -186,7 +157,6 @@ const tokenBuilder = (user) => __awaiter(void 0, void 0, void 0, function* () {
     });
     return token;
 });
-// email confirmation or verification
 const confirmEmail = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _e, _f;
     const { token, email } = req.body;
@@ -234,11 +204,9 @@ const confirmEmail = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             type: enum_1.OtpTypes.VERIFICATION,
             otp_expired_at: new Date(otpExpiration),
         });
-        // send confirmation SMS
         (0, phone_sms_sender_1.sendPhoneSMS)({
             body: `${p_code} - Is your verification code and valid for only 10 minutes, please confirm to activate your account. and then you can login to your account.`,
             to,
-            // from: TWILIO_WHATSAPP_NUMBER,
         });
         return res.status(200).json({
             message: "Your email is confirmed. Now we sent OTP code to your mobile number, Please confirm your phone. and then you have authenticated access to your account.",
@@ -255,7 +223,6 @@ const confirmEmail = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.confirmEmail = confirmEmail;
-// Phone confirmation....
 const confirmPhoneNumber = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _g, _h;
     try {
@@ -290,7 +257,6 @@ const confirmPhoneNumber = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.confirmPhoneNumber = confirmPhoneNumber;
-// Resend phone confirmation code ...
 const resendPhoneConfirmationCode = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _j, _k;
     const { phone_number } = req.body;
@@ -320,11 +286,9 @@ const resendPhoneConfirmationCode = (req, res) => __awaiter(void 0, void 0, void
             type: enum_1.OtpTypes.VERIFICATION,
             otp_expired_at: new Date(otpExpiration),
         });
-        // send confirmation SMS
         (0, phone_sms_sender_1.sendPhoneSMS)({
             body: `${code} - Is your confirmation code and valid for only 10 minutes, please confirm to activate your account.`,
             to,
-            // from: TWILIO_WHATSAPP_NUMBER,
         });
         return res.status(200).json({
             message: "Confirmation sent successfully. Check your mobile phone.",
@@ -342,7 +306,6 @@ const resendPhoneConfirmationCode = (req, res) => __awaiter(void 0, void 0, void
     }
 });
 exports.resendPhoneConfirmationCode = resendPhoneConfirmationCode;
-// forgot password
 const phoneForgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _l, _m;
     try {

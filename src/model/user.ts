@@ -1,5 +1,5 @@
 import { Schema, model, Document, Types } from "mongoose";
-import { UserSchemaType } from "./model_types";
+import { UserSchemaType } from "./interface_types";
 
 // Use Generic type to the schema type
 const userSchema = new Schema<UserSchemaType>(

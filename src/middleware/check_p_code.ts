@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { BodyType, ResponseType } from "../model/model_types";
+import { BodyType, ResponseType } from "../model/interface_types";
 
 export const validatePConfirmation = (
   req: Request,

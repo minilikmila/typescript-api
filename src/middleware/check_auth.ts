@@ -1,7 +1,7 @@
 import jwt, { Secret, JwtPayload } from "jsonwebtoken";
 import { Response, Request, NextFunction } from "express";
-import { ResponseType } from "../model/model_types";
-import { CustomRequest } from "../model/model_types";
+import { ResponseType } from "../model/interface_types";
+import { CustomRequest } from "../model/interface_types";
 import { jwt_secret_key } from "../config";
 import { validateToken } from "../utils/index";
 

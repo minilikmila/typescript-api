@@ -34,7 +34,6 @@ const validateToken = (token) => {
 exports.validateToken = validateToken;
 const generateJWTToken = (payload = {}, options = {}) => {
     try {
-        //   const privateKey: <any> = JWT_PUBLIC_KEY;
         const defaultOption = {
             expiresIn: "1h",
         };
@@ -51,18 +50,11 @@ const generateJWTToken = (payload = {}, options = {}) => {
 exports.generateJWTToken = generateJWTToken;
 const extractToken = (token) => {
     if (token.startsWith("Bearer")) {
-        // IF the token is bearer token...
         return token.split(" ")[1];
     }
     return null;
 };
 exports.extractToken = extractToken;
-// const randomPhoneCodeGenerator = (): string => {
-//   const uuid = "xxxxxx".replace(/x/g, () =>
-//     Math.floor(Math.random() * 10).toString(16)
-//   );
-//   return uuid.substring(0, 6);
-// };
 const generateOTP = (len) => {
     const digits = "0123456789";
     let OTP = "";
