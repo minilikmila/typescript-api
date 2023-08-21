@@ -8,3 +8,8 @@ export enum OtpTypes {
   VERIFICATION = "verification",
   AUTHENTICATION = "authentication",
 }
+
+export enum TokenType {
+  EMAIL_VERIFICATION = "email_verification",
+  ACCESS = "access",
+}

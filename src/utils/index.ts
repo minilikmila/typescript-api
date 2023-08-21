@@ -4,6 +4,7 @@ import { UserSchemaType } from "../model/model_types";
 import HttpError from "./httpError";
 import OtpM from "../model/otp";
 import { IOtp } from "../interfaces/otpInterface";
+import Logging from "../library/logging";
 
 const validateToken = (token: string): Object | JwtPayload => {
   try {
@@ -108,6 +109,7 @@ const setOtp = async ({
     });
     return opt_value._id;
   } catch (error: any) {
+    Logging.info(`Error encountered in setOtp method: ${error}`);
     throw new HttpError({
       title: "otp_creation_error",
       code: 400,
