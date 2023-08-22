@@ -34,7 +34,7 @@ export default class Mailer {
         Logging.info(`Msg sent: ${info.response}`);
       })
       .catch((err: any) => {
-        Logging.error(`Error when sent a mail ${err}`);
+        Logging.error(`Error when sent a mail - ${err}`);
         throw new HttpError({
           title: "mailer_error",
           code: 500,
