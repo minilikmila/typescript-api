@@ -1,4 +1,5 @@
-const verifyEmail = function (token: string) {
+import { TemplateReturns } from "../model/interface_types";
+const verifyEmail = function (token: string): TemplateReturns {
   const html = `
     <!DOCTYPE html>
     <html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -107,7 +108,6 @@ Use this link to confirm your account and log in</div>
 Use this link to confirm your account and log in
                           </p>
 
-                          // <lable style="display: block; font-size: 24px; line-height: 100%; margin-bottom: 24px; --text-opacity: 1; color: #000000; text-decoration: none;">${token}</lable>
                           <a
                           style="color: #336eff; font-size: medium; font: bold; display: block; font-size: 24px; line-height: 100%; margin-bottom: 24px; --text-opacity: 1; text-decoration: none;"
                           href="http://localhost:9090/vefify_account?token=${token}"
@@ -161,7 +161,7 @@ Use this link to confirm your account and log in
   const text = `
         Verify Email, A request to create your node-typescript-boilerplate account was received.
         click this Link ${token} to confirm your account and log in`;
-  return {
+  return <TemplateReturns>{
     html: html,
     text: text,
   };
