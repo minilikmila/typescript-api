@@ -6,6 +6,7 @@ import {
   emailAddress,
   phoneNumber,
 } from "../validator/auth_validator";
+import { requiredStringFields } from "../validator/common";
 
 import {
   register,
@@ -23,7 +24,25 @@ import { validatePConfirmation } from "../middleware/check_p_code";
 const router: Router = express.Router();
 
 router
-  .post("/register", validate([emailAddress(), authPassword()]), register)
+  .post(
+    "/register",
+    validate([
+      requiredStringFields("name", "Name", { min: 2, max: 255 }),
+      requiredStringFields("email", "Email", { min: 2, max: 255 }),
+      requiredStringFields("password", "Password", { min: 2, max: 255 }),
+      requiredStringFields("phone_number", "Phone Number", {
+        min: 2,
+        max: 255,
+      }),
+      requiredStringFields("country_code", "Country code", {
+        min: 2,
+        max: 255,
+      }),
+      emailAddress(),
+      authPassword(),
+    ]),
+    register
+  )
   .post("/login", validate([authorization()]), login)
   .post("/confirm_phone", validatePConfirmation, confirmPhoneNumber)
   .get("/resend_phone_code", validatePConfirmation, resendPhoneConfirmationCode)
