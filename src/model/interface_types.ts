@@ -51,6 +51,11 @@ export type BodyType = {
   phone_number?: string;
 };
 
+export type TemplateReturns = {
+  html: string;
+  text: string;
+};
+
 // export interface IOtpSchemaType {
 //   userId: string;
 //   otp: string;
