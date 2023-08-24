@@ -1,4 +1,5 @@
 import { ApiErrorInterface } from "../interfaces/apiErrorInterface";
+import { Response } from "express";
 
 export default class HttpError extends Error {
   readonly opts: ApiErrorInterface;
@@ -7,7 +8,7 @@ export default class HttpError extends Error {
     this.opts = opts;
     Error.captureStackTrace(this);
   }
-  sendError(res: any) {
+  sendError(res: Response) {
     return res.status(this.opts.code).json({
       errors: [
         {
