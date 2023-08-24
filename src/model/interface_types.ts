@@ -13,7 +13,7 @@ export interface UserSchemaType extends Document {
   email: string;
   country_code?: string;
   phone_number?: string;
-  password?: string;
+  password: string;
   is_phone_confirmed?: boolean;
   is_email_confirmed?: boolean;
   email_confirmed_at?: Date;
