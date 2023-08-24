@@ -30,26 +30,27 @@ export const register = async (req: Request, res: Response) => {
   const body: UserSchemaType = req.body;
 
   try {
-    if (
-      !body.email ||
-      !body.name ||
-      !body.password ||
-      !body.phone_number ||
-      !body.country_code
-    ) {
-      console.log("HEre!!");
-      return res.status(400).json(<ResponseType>{
-        message: `Something went wrong 🔥.`,
-        success: false,
-        status: "Internal Server Error",
-      });
-    }
+    // if (
+    //   !body.email ||
+    //   !body.name ||
+    //   !body.password ||
+    //   !body.phone_number ||
+    //   !body.country_code
+    // ) {
+    //   console.log("HEre!!");
+    //   return res.status(400).json(<ResponseType>{
+    //     message: `Something went wrong 🔥.`,
+    //     success: false,
+    //     status: "Internal Server Error",
+    //   });
+    // }
     const user_exists = await User.findOne({ email: body.email });
 
     if (user_exists) {
-      return res.status(500).json(<ResponseType>{
-        message: "user already available",
-        success: false,
+      throw new HttpError({
+        title: "duplicate_account",
+        code: 400,
+        detail: "User already available",
       });
     }
 
@@ -61,7 +62,6 @@ export const register = async (req: Request, res: Response) => {
       name: body.name,
       email: body.email,
       password: hashedPassword,
-      // phone_confirmation_code: p_code,
       phone_number: body.phone_number,
       country_code: body.country_code,
     });
@@ -91,34 +91,6 @@ export const register = async (req: Request, res: Response) => {
         "Signed up successfully. Confirmation sent via your email, Please confirm your account.",
       success: true,
     });
-
-    // await setOtp(<IOtp>{
-    //   userId: user.id,
-    //   otp: p_code,
-    //   type: OtpTypes.VERIFICATION,
-    //   otp_expired_at: new Date(otpExpiration),
-    // });
-
-    // if (user) {
-    //   // send confirmation SMS
-    //   const to = `${user.country_code}${user.phone_number}`;
-    //   sendPhoneSMS(<SMSMessage>{
-    //     body: `${p_code} - Is your confirmation code and valid for only 10 minutes, please confirm to activate your account.`,
-    //     to,
-    //     // from: TWILIO_WHATSAPP_NUMBER,
-    //   });
-    //   return res.status(201).json(<Object>{
-    //     _id: user.id,
-    //     name: user.name,
-    //     email: user.email,
-    //     // token: generateToken(user),
-    //   });
-    // } else {
-    //   return res.status(500).send(<ResponseType>{
-    //     message: "Something went wrong.",
-    //     success: false,
-    //   });
-    // }
   } catch (error: any) {
     Logging.error(`Error: ${req.originalUrl}: encountered error - ${error}`);
     let err_code = error?.opts?.code || 500;
