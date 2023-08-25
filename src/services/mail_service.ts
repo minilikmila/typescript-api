@@ -31,7 +31,7 @@ export default class Mailer {
     await this.transporter
       .sendMail(mailOption)
       .then((info) => {
-        Logging.info(`Msg sent: ${info.response}`);
+        Logging.info(`Msg sent : ${info.response}`);
       })
       .catch((err: any) => {
         Logging.error(`Error when sent a mail - ${err}`);
@@ -61,7 +61,7 @@ export const sendEmail = async (mailOption: MailOptions) => {
     const info = await transporter.sendMail(mailOption);
     Logging.info(`Info: ${info.response}`);
   } catch (err: any) {
-    console.log("error inside mailing service: ", err);
+    Logging.error(`Mailing error encountered : ${err} `);
     throw new HttpError({
       title: "mail_service_error",
       code: 500,

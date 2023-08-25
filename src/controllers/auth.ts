@@ -30,20 +30,6 @@ export const register = async (req: Request, res: Response) => {
   const body: UserSchemaType = req.body;
 
   try {
-    // if (
-    //   !body.email ||
-    //   !body.name ||
-    //   !body.password ||
-    //   !body.phone_number ||
-    //   !body.country_code
-    // ) {
-    //   console.log("HEre!!");
-    //   return res.status(400).json(<ResponseType>{
-    //     message: `Something went wrong 🔥.`,
-    //     success: false,
-    //     status: "Internal Server Error",
-    //   });
-    // }
     const user_exists = await User.findOne({ email: body.email });
 
     if (user_exists) {
@@ -276,7 +262,6 @@ export const confirmPhoneNumber = async (
     }
 
     const validOtp = await verifyOTP(user.id, code, OtpTypes.VERIFICATION);
-    console.log("OPT id", validOtp);
 
     await user.updateOne(<UserSchemaType>{
       is_phone_confirmed: true,

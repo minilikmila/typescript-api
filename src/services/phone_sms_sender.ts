@@ -5,6 +5,8 @@ import {
   TWILIO_PHONE_NUMBER,
 } from "../config";
 import { SMSMessage } from "../model/interface_types";
+import HttpError from "../utils/httpError";
+import Logging from "../library/logging";
 
 export const sendPhoneSMS = (payload: SMSMessage) => {
   try {
@@ -17,13 +19,23 @@ export const sendPhoneSMS = (payload: SMSMessage) => {
         body: payload.body, // create error by setting it payload.from
       })
       .then((res) => {
-        console.log("SMS sent successfully: with a body : - ", res.body);
+        Logging.info(`SMS sent successfully : ${res.body}`);
       })
       .catch((err) => {
-        console.log("Error happened when sending SMS: ", err);
+        Logging.error(`Error encountered when sending sms : ${err}`);
+        throw new HttpError({
+          title: "phone_sms_sender_error",
+          code: 500,
+          detail: err,
+        });
       });
-  } catch (error) {
-    console.log("Error happened while initialize twilio client.", error);
+  } catch (error: any) {
+    Logging.error(`Encountered error when sending SMS : ${error}`);
     // return error;
+    throw new HttpError({
+      title: "phone_sms_general_error",
+      code: 500,
+      detail: error,
+    });
   }
 };
